@@ -1,0 +1,30 @@
+{
+    "family": "age-api-task",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "arn:aws:iam::216876474007:role/ecsTaskExecutionRole",
+    "containerDefinitions": [
+      {
+        "name": "age-api",
+        "image": "216876474007.dkr.ecr.ap-northeast-1.amazonaws.com/age-api:latest",
+        "essential": true,
+        "portMappings": [
+          {
+            "containerPort": 80,
+            "protocol": "tcp"
+          }
+        ],
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/age-api-task",
+            "awslogs-region": "ap-northeast-1",
+            "awslogs-stream-prefix": "ecs"
+          }
+        }
+      }
+    ]
+  }
+  

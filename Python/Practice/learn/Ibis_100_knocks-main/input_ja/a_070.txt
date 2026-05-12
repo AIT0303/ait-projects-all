@@ -1,0 +1,35 @@
+[answer70]
+
+t2 = t2.drop("class")
+t2 = t2.mutate(
+    row_sum=sum([t2[col] for col in t2.select(s.numeric()).columns])
+)
+
+t2
+
+----------------------------------------------
+
+[Tips]
+・列方向のt2[col]をfor文で加算し合計を算出する
+・別途ライブラリの import が必要だが以下のように
+　記述することもできる。
+
+from functools import reduce
+from operator import add
+
+(
+    t2
+    .drop("class")
+    .mutate(
+        row_sum=reduce(add, s.across(s.numeric(), _).expand(t2))
+        # ここは .expand(_) と書けない（バグ？）
+    )
+)
+
+----------------------------------------------
+
+[参考] pandas記法
+
+df2 = df2.drop(['class'],axis=1)
+print(df2.sum(axis=1)) #行方向の合計
+

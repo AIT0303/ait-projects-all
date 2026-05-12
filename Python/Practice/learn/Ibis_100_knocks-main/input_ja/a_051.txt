@@ -1,0 +1,31 @@
+[answer51]
+
+t = t.mutate(
+    age=t["age"].fillna(30)
+)
+
+t["age"].isnull().sum()
+
+
+----------------------------------------------
+
+[Tips]
+・欠損値の補完には .fillna() メソッドを使用する。
+・なお、.fillna() メソッドは string 列に対して
+　実行するとなぜかエラーが出てしまうため、string 列に対して
+　欠損値補完をする場合は .ifelse() メソッドで書く。
+　（適切な書き方が分かり次第、解答をアップデートします）
+
+strign 列の欠損値補完をする場合
+
+t = t.mutate(
+    embarked=(t["embarked"].isnull()).ifelse("null", t["embarked"])
+)
+
+----------------------------------------------
+
+[参考] pandas記法
+
+df['age'] = df['age'].fillna(30)
+df['age'].isnull().sum()
+

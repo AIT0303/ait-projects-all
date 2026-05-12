@@ -1,0 +1,36 @@
+[answer36]
+
+t = t.mutate(
+    fare=t["fare"] * 2,
+    age=t["age"] + 3
+)
+
+# 別解
+# t = t.mutate(
+#     [(t["fare"] * 2).name("fare"),
+#      (t["age"]+3).name("age")]
+# )
+
+t.head()
+
+
+----------------------------------------------
+
+[Tips]
+・.mutate() を使用して既存列への処理の適用ができる。
+・別解のように .name() を用いて複数処理を記述したい場合は、
+　処理内容を[]で囲む。
+
+t = t.mutate(
+    [(t["fare"] * 2).name("fare"),
+     (t["age"]+3).name("age")]
+)
+
+----------------------------------------------
+
+[参考] pandas記法
+
+
+df['fare'] = df['fare'] * 2
+df['age'] = df['age'] + 3
+df.head()

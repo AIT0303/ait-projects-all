@@ -1,0 +1,36 @@
+{
+    "family": "wordbook-app-task",
+    "executionRoleArn": "arn:aws:iam::216876474007:role/ecsTaskExecutionRole",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": ["FARGATE"],
+    "cpu": "256",
+    "memory": "512",
+    "containerDefinitions": [
+      {
+        "name": "wordbook-app",
+        "image": "216876474007.dkr.ecr.ap-northeast-1.amazonaws.com/wordbook-app:latest",
+        "essential": true,
+        "portMappings": [
+          {
+            "containerPort": 5200,
+            "protocol": "tcp"
+          }
+        ],
+        "environment": [
+          { "name": "SECRET_KEY", "value": "Kouki1803&" },
+          { "name": "COGNITO_CLIENT_ID", "value": "38bb0fudb9inclu6r6p07bp1v9" },
+          { "name": "COGNITO_CLIENT_SECRET", "value": "q14btuntja7r1arhdhbqmvk1v786a8h8f9m6adnbooh7crbfubs" },
+          { "name": "COGNITO_USER_POOL_ID", "value": "ap-northeast-1_Z8l6RkAji" }
+        ],
+        "logConfiguration": {
+          "logDriver": "awslogs",
+          "options": {
+            "awslogs-group": "/ecs/wordbook-app-task",
+            "awslogs-region": "ap-northeast-1",
+            "awslogs-stream-prefix": "ecs"
+          }
+        }
+      }
+    ]
+  }
+  

@@ -1,0 +1,22 @@
+[answer70]
+
+t2 = t2.drop("class")
+t2 = t2.mutate(
+    row_sum=sum([t2[col] for col in 
+    t2.select(s.numeric()).columns])
+)
+
+t2
+
+----------------------------------------------
+
+[Tips]
+- Calculate the sum by adding up the values
+  in the column direction of t2[col] using a for loop.
+
+----------------------------------------------
+
+[Reference] pandas syntax
+
+df2 = df2.drop(['class'], axis=1)
+print(df2.sum(axis=1)) # Total in the row direction
