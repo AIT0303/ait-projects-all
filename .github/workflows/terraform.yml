@@ -1,0 +1,173 @@
+name: Terraform CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Terraform/**'
+      - '.github/workflows/terraform.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'Terraform/**'
+      - '.github/workflows/terraform.yml'
+
+env:
+  AWS_REGION: ap-northeast-1
+  TF_VERSION: 1.7.0
+
+permissions:
+  id-token: write   # OIDC に必要
+  contents: read
+  pull-requests: write  # PR へのコメントに必要
+
+jobs:
+  # =============================================================================
+  # 変更されたモジュールを検出
+  # =============================================================================
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.changes.outputs.modules }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed modules
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BASE_SHA=${{ github.event.pull_request.base.sha }}
+            HEAD_SHA=${{ github.event.pull_request.head.sha }}
+          else
+            BASE_SHA=${{ github.event.before }}
+            HEAD_SHA=${{ github.sha }}
+          fi
+
+          # 変更されたファイルからモジュールを抽出
+          CHANGED_MODULES=$(git diff --name-only $BASE_SHA $HEAD_SHA | \
+            grep "^Terraform/multi-account-iac/" | \
+            cut -d'/' -f3 | \
+            grep -E "^[0-9]{2}-" | \
+            sort -u | \
+            jq -R -s -c 'split("\n") | map(select(length > 0))')
+
+          echo "Changed modules: $CHANGED_MODULES"
+          echo "modules=$CHANGED_MODULES" >> $GITHUB_OUTPUT
+
+  # =============================================================================
+  # Terraform Plan (PR時)
+  # =============================================================================
+  plan:
+    needs: detect-changes
+    if: github.event_name == 'pull_request' && needs.detect-changes.outputs.modules != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJson(needs.detect-changes.outputs.modules) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Format Check
+        id: fmt
+        working-directory: Terraform/multi-account-iac/${{ matrix.module }}
+        run: terraform fmt -check -recursive
+        continue-on-error: true
+
+      - name: Terraform Init
+        id: init
+        working-directory: Terraform/multi-account-iac/${{ matrix.module }}
+        run: terraform init
+
+      - name: Terraform Validate
+        id: validate
+        working-directory: Terraform/multi-account-iac/${{ matrix.module }}
+        run: terraform validate -no-color
+
+      - name: Terraform Plan
+        id: plan
+        working-directory: Terraform/multi-account-iac/${{ matrix.module }}
+        run: terraform plan -no-color -out=tfplan
+        continue-on-error: true
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const module = '${{ matrix.module }}';
+            const fmt = '${{ steps.fmt.outcome }}';
+            const init = '${{ steps.init.outcome }}';
+            const validate = '${{ steps.validate.outcome }}';
+            const plan = '${{ steps.plan.outcome }}';
+
+            const output = `## Terraform Plan: \`${module}\`
+
+            | Step | Status |
+            |------|--------|
+            | 🖌 Format | ${fmt === 'success' ? '✅' : '❌'} |
+            | ⚙️ Init | ${init === 'success' ? '✅' : '❌'} |
+            | 📋 Validate | ${validate === 'success' ? '✅' : '❌'} |
+            | 📝 Plan | ${plan === 'success' ? '✅' : '❌'} |
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Plan Status
+        if: steps.plan.outcome == 'failure'
+        run: exit 1
+
+  # =============================================================================
+  # Terraform Apply (main マージ時)
+  # =============================================================================
+  apply:
+    needs: detect-changes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.detect-changes.outputs.modules != '[]'
+    runs-on: ubuntu-latest
+    environment: production  # 手動承認が必要（GitHub で設定）
+    strategy:
+      fail-fast: false
+      max-parallel: 1  # 順番に実行
+      matrix:
+        module: ${{ fromJson(needs.detect-changes.outputs.modules) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: Terraform/multi-account-iac/${{ matrix.module }}
+        run: terraform init
+
+      - name: Terraform Apply
+        working-directory: Terraform/multi-account-iac/${{ matrix.module }}
+        run: terraform apply -auto-approve
