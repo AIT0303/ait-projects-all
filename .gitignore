@@ -39,3 +39,12 @@ coverage/
 # Cache
 .cache/
 .eslintcache
+
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!example.tfvars
+.terraform.lock.hcl
