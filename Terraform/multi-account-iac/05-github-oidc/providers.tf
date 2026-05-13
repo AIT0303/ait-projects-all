@@ -30,6 +30,6 @@ provider "aws" {
 
 locals {
   aws_region  = "ap-northeast-1"
-  github_org  = "ait0303"                # GitHub Organization または Username
+  github_org  = "AIT0303"                # GitHub Organization または Username（大文字小文字注意）
   github_repo = "ait-projects-all"       # リポジトリ名
 }
