@@ -29,8 +29,14 @@ provider "aws" {
 }
 
 locals {
-  aws_region        = "ap-northeast-1"
-  project_name      = "ait-multi-account"
-  enable_cloudtrail = true
-  enable_guardduty  = true
+  aws_region   = "ap-northeast-1"
+  project_name = "ait-multi-account"
+
+  # コメントアウト中 - 必要時に有効化
+  # enable_cloudtrail = true
+  # enable_guardduty  = true
+
+  # Budget settings
+  budget_limit_usd = "10"                         # 月額予算（USD）
+  alert_email      = "kouki.06.15.1803@gmail.com" # アラート通知先
 }
