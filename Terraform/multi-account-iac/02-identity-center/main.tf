@@ -1,3 +1,4 @@
+# Lock conflict test - delete after testing
 # Get IAM Identity Center instance
 data "aws_ssoadmin_instances" "main" {}
 
