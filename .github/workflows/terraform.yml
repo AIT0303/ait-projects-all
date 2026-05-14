@@ -18,6 +18,15 @@ env:
   AWS_REGION: ap-northeast-1
   TF_VERSION: 1.7.0
 
+# =============================================================================
+# State ロック競合対策
+# - 同じ PR への複数 push で古い実行をキャンセル
+# - main ブランチへの apply は直列実行（キャンセルしない）
+# =============================================================================
+concurrency:
+  group: terraform-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 permissions:
   id-token: write   # OIDC に必要
   contents: read
