@@ -156,6 +156,22 @@ jobs:
         run: terraform fmt -check -recursive
         continue-on-error: true
 
+      # tflint - Terraform Linter
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Init TFLint
+        working-directory: Terraform/multi-account-iac
+        run: tflint --init
+
+      - name: Run TFLint
+        id: tflint
+        working-directory: Terraform/multi-account-iac/${{ matrix.module }}
+        run: tflint --config=../.tflint.hcl --format compact
+        continue-on-error: true
+
       - name: Terraform Init
         id: init
         working-directory: Terraform/multi-account-iac/${{ matrix.module }}
@@ -178,6 +194,7 @@ jobs:
           script: |
             const module = '${{ matrix.module }}';
             const fmt = '${{ steps.fmt.outcome }}';
+            const tflint = '${{ steps.tflint.outcome }}';
             const init = '${{ steps.init.outcome }}';
             const validate = '${{ steps.validate.outcome }}';
             const plan = '${{ steps.plan.outcome }}';
@@ -187,6 +204,7 @@ jobs:
             | Step | Status |
             |------|--------|
             | 🖌 Format | ${fmt === 'success' ? '✅' : '❌'} |
+            | 🔍 TFLint | ${tflint === 'success' ? '✅' : '⚠️'} |
             | ⚙️ Init | ${init === 'success' ? '✅' : '❌'} |
             | 📋 Validate | ${validate === 'success' ? '✅' : '❌'} |
             | 📝 Plan | ${plan === 'success' ? '✅' : '❌'} |
