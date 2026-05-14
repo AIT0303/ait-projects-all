@@ -8,9 +8,14 @@ PR 作成時に自動でセキュリティスキャンを実行し、Terraform �
 
 ## 使用ツール
 
-### tfsec
+### Trivy
 
-Terraform 専用のセキュリティスキャナー。AWS/Azure/GCP のベストプラクティスに基づいてチェック。
+Aqua Security の統合セキュリティスキャナー。tfsec の後継として、Terraform の設定ミスや脆弱性を検出。
+
+**特徴:**
+- tfsec の後継（tfsec は開発終了予定）
+- Terraform `import` ブロック（1.5+）に対応
+- コンテナ、ファイルシステム、IaC 全般をスキャン可能
 
 **検出例:**
 - S3 バケットの暗号化が無効
@@ -18,7 +23,7 @@ Terraform 専用のセキュリティスキャナー。AWS/Azure/GCP のベス�
 - IAM ポリシーが過度に permissive
 - CloudTrail のログ検証が無効
 
-**公式サイト:** https://aquasecurity.github.io/tfsec/
+**公式サイト:** https://trivy.dev/
 
 ### Checkov
 
@@ -42,7 +47,7 @@ IaC 全般のセキュリティスキャナー（Terraform, CloudFormation, Kube
 PR 作成
     │
     ├── security-scan (並列実行)
-    │   ├── tfsec
+    │   ├── Trivy
     │   └── Checkov
     │
     └── plan (並列実行)
@@ -56,7 +61,7 @@ PR 作成
 
 | Scanner | Status |
 |---------|--------|
-| tfsec | ✅ Passed |
+| Trivy | ✅ Passed |
 | Checkov | ⚠️ Issues Found |
 
 > 詳細は Actions ログを確認してください。
@@ -66,13 +71,15 @@ PR 作成
 
 ## soft_fail について
 
-現在の設定では `soft_fail: true` になっています：
+現在の設定では `continue-on-error: true`（soft_fail相当）になっています：
 
 ```yaml
-- name: Run tfsec
-  uses: aquasecurity/tfsec-action@v1.0.3
+- name: Run Trivy (Terraform)
+  uses: aquasecurity/trivy-action@master
+  continue-on-error: true  # 失敗してもワークフローを継続
   with:
-    soft_fail: true  # 失敗してもワークフローを継続
+    scan-type: 'config'
+    scan-ref: 'Terraform/multi-account-iac'
 ```
 
 **意味:**
@@ -81,25 +88,25 @@ PR 作成
 
 **本番向け設定:**
 ```yaml
-soft_fail: false  # セキュリティ問題があればマージをブロック
+continue-on-error: false  # セキュリティ問題があればマージをブロック
 ```
 
 ---
 
 ## ローカルでの実行
 
-### tfsec
+### Trivy
 
 ```bash
 # インストール (macOS)
-brew install tfsec
+brew install trivy
 
 # 実行
 cd Terraform/multi-account-iac
-tfsec .
+trivy config .
 
 # 特定のモジュールのみ
-tfsec ./05-github-oidc
+trivy config ./05-github-oidc
 ```
 
 ### Checkov
@@ -128,12 +135,12 @@ checkov -d ./05-github-oidc
 
 正当な理由がある場合、コメントで無視できます。
 
-**tfsec:**
+**Trivy:**
 ```hcl
 resource "aws_s3_bucket" "example" {
   bucket = "my-bucket"
 
-  #tfsec:ignore:aws-s3-enable-bucket-logging
+  #trivy:ignore:AVD-AWS-0088
   # 理由: このバケットはログ専用のため
 }
 ```
@@ -176,8 +183,19 @@ resource "aws_s3_bucket" "example" {
 
 ---
 
+## tfsec からの移行について
+
+tfsec は Trivy に統合される予定のため、本プロジェクトでは Trivy を使用しています。
+
+**移行理由:**
+- tfsec は開発終了予定
+- Trivy は Terraform `import` ブロック（1.5+）に対応
+- Trivy はコンテナスキャンなど他のセキュリティ機能も統合
+
+---
+
 ## 参考リンク
 
-- [tfsec ドキュメント](https://aquasecurity.github.io/tfsec/)
+- [Trivy ドキュメント](https://trivy.dev/latest/docs/)
 - [Checkov ドキュメント](https://www.checkov.io/1.Welcome/Quick%20Start.html)
 - [AWS Security Best Practices](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-standards-fsbp.html)
