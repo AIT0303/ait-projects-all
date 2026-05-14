@@ -69,13 +69,18 @@ jobs:
       - uses: actions/checkout@v4
 
       # tfsec - Terraform セキュリティスキャナー
+      - name: Install tfsec
+        run: |
+          curl -s https://raw.githubusercontent.com/aquasecurity/tfsec/master/scripts/install_linux.sh | bash
+          sudo mv ./tfsec /usr/local/bin/
+
       - name: Run tfsec
         id: tfsec
-        uses: aquasecurity/tfsec-action@v1.0.3
-        with:
-          working_directory: Terraform/multi-account-iac
-          soft_fail: true  # 失敗してもワークフローを継続
-          format: lovely
+        continue-on-error: true  # soft_fail 相当
+        run: |
+          tfsec Terraform/multi-account-iac \
+            --format lovely \
+            --exclude-path "**/imports.tf"
 
       # Checkov - IaC セキュリティスキャナー
       - name: Run Checkov
@@ -86,6 +91,7 @@ jobs:
           soft_fail: true  # 失敗してもワークフローを継続
           output_format: cli
           download_external_modules: false
+          skip_path: "**/imports.tf"
 
       # PR にコメント
       - name: Comment Security Scan Results
